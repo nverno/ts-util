@@ -56,9 +56,9 @@ def main():
     elif args.type == "anon":
         print("\n".join(anon))
     else:
-        print("Named:\n\t-", "\n\t- ".join(named))
-        print("Anon:\n\t-", "\n\t- ".join(anon))
-        print("Fields:\n\t-", "\n\t- ".join(fields))
+        print("Named:\n\t", "\n\t ".join(named))
+        print("Anon:\n\t", "\n\t ".join(anon))
+        print("Fields:\n\t", "\n\t ".join(fields))
 
 
 if __name__ == "__main__":

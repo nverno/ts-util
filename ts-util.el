@@ -31,6 +31,8 @@
 
 (require 'treesit)
 
+(defvar ts-util-parser-directory (locate-user-emacs-file "tree-sitter/"))
+
 (defvar ts-util--dir
   (file-name-directory
    (cond (load-in-progress load-file-name)
@@ -38,22 +40,35 @@
           byte-compile-current-file)
          (t (buffer-file-name)))))
 
-(defsubst ts-util--read-parser ()
-  (expand-file-name
-   (read-file-name "Parser: " (locate-user-emacs-file "tree-sitter/"))))
+(eval-when-compile
+  (defsubst ts:util--parser-name (lib)
+    (car (last (split-string (file-name-sans-extension lib) "-"))))
+
+  (defsubst ts:util--read-parser ()
+    (expand-file-name (read-file-name "Parser: " ts-util-parser-directory))))
 
 ;;;###autoload
 (defun ts-util-nodes (parser &optional types)
   "Get node and field names for PARSER.
 With \\[universal-argument] prompt for TYPES to limit results."
   (interactive
-   (list (ts-util--read-parser)
+   (list (ts:util--read-parser)
          (and current-prefix-arg
               (completing-read "Type: " '("all" "named" "anon" "field")))))
-  (let ((name (car (last (split-string (file-name-sans-extension parser) "-")))))
-    (process-lines
-     "python3" (expand-file-name "bin/nodes.py" ts-util--dir)
-     "-t" (or types "all") name parser)))
+  (let* ((name (ts:util--parser-name parser))
+         (bufname (format "*%s-nodes*" name)))
+    (unless (get-buffer bufname)
+      ;; (process-lines
+      ;;  "python3" (expand-file-name "bin/nodes.py" ts-util--dir)
+      ;;  "-t" (or types "all") name parser)
+      (call-process-shell-command
+       (format "%s -t %s %s %s" (expand-file-name "bin/nodes.py" ts-util--dir)
+               (or types "all") name parser)
+       nil (get-buffer-create bufname) t))
+    (with-current-buffer bufname
+      (view-mode)
+      (goto-char (point-min)))
+    (display-buffer bufname)))
 
 (provide 'ts-util)
 ;; Local Variables:
