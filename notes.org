@@ -1,0 +1,29 @@
+#+TITLE: Treesitter utils
+
+* Treesit fast map commands
+- highlight node at point
+- node text at point
+- language at point
+- range of node at point
+- highlight captures at point
+  
+* Nvim functions that would be nice
+** vim.treesitter.get_captures_at_[cursor|pos]()
+Get the highlight captures at point.
+** vim.treesitter.language.inspect(lang)
+Provides info about lang, include node names
+
+#+begin_quote
+{
+  fields = { "x", ... },
+  symbols = {
+    [3] = { ".", false },
+    ...,
+    [10] = { "identifier", true },
+  }
+}
+#+end_quote
+** vim.treesitter.query.list_[directives|predicates]()
+List defined directives (eg.  ~set!~, not applicable in emacs) and predicates
+(eg. ~match?~)
+

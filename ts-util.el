@@ -29,7 +29,9 @@
 ;;; Commentary:
 ;;; Code:
 
+(eval-when-compile 'cl-lib)
 (require 'treesit)
+(require 'transient)
 
 (defvar ts-util-parser-directory (locate-user-emacs-file "tree-sitter/"))
 
@@ -41,21 +43,48 @@
          (t (buffer-file-name)))))
 
 (eval-when-compile
-  (defsubst ts:util--parser-name (lib)
+  (defsubst ts:util--parser-lib-name (lib)
     (car (last (split-string (file-name-sans-extension lib) "-"))))
 
-  (defsubst ts:util--read-parser ()
+  (defsubst ts:util--parser-lib-read ()
     (expand-file-name (read-file-name "Parser: " ts-util-parser-directory))))
 
+(defun ts-util-read-buffer-parser ()
+  (let ((parsers (treesit-parser-list nil nil t)))
+    (if (length< parsers 2)
+        (car parsers)
+      (let ((name (completing-read
+                   "Parser: " (seq-uniq (mapcar #'treesit-parser-language parsers)))))
+        (cl-find name parsers :key #'treesit-parser-language :test #'string=)))))
+
+
+;; (defvar-keymap ts-util-range-map)
+(defconst ts-util--overlay-name 'ts-util-overlay)
+
+(defun ts-util-make-overlay (begin end &optional name)
+  (let ((ov (make-overlay begin end (current-buffer) nil t)))
+    (overlay-put ov ts-util--overlay-name t)
+    (when name (overlay-put ov name t))
+    (overlay-put ov 'face 'highlight)
+    ;; (overlay-put ov 'keymap ts-util-range-map)
+    ;; (overlay-put ov 'insert-in-front-hooks '())
+    ;; (overlay-put ov 'insert-behind-hooks '())
+    ;; (overlay-put ov 'modification-hooks '())
+    (overlay-put ov 'priority 100)
+    ov))
+
+
+;;; Nodes
+
 ;;;###autoload
-(defun ts-util-nodes (parser &optional types)
+(defun ts-util-list-nodes (parser &optional types)
   "Get node and field names for PARSER.
 With \\[universal-argument] prompt for TYPES to limit results."
   (interactive
-   (list (ts:util--read-parser)
+   (list (ts:util--parser-lib-read)
          (and current-prefix-arg
               (completing-read "Type: " '("all" "named" "anon" "field")))))
-  (let* ((name (ts:util--parser-name parser))
+  (let* ((name (ts:util--parser-lib-name parser))
          (bufname (format "*%s-nodes*" name)))
     (unless (get-buffer bufname)
       ;; (process-lines
@@ -69,6 +98,41 @@ With \\[universal-argument] prompt for TYPES to limit results."
       (view-mode)
       (goto-char (point-min)))
     (display-buffer bufname)))
+
+
+;;; Parsers
+
+(defvar-local ts-util--range-overlays nil)
+
+(defvar-keymap ts-util-repeat-range-map
+  :repeat (:enter (ts-util-toggle-ranges))
+  "r" #'ts-util-toggle-ranges)
+
+(defun ts-util-toggle-ranges ()
+  "Toggle highlight of current ranges for parser."
+  (interactive)
+  (if (null ts-util--range-overlays)
+      (let ((parser (ts-util-read-buffer-parser)))
+        (when parser
+          (let ((ranges (treesit-parser-included-ranges parser)))
+            ;; (pulse-delay 0.05)
+            ;; (pulse-momentary-highlight-region beg end)
+            (pcase-dolist (`(,beg . ,end) ranges)
+              (push (ts-util-make-overlay beg end (treesit-parser-language parser))
+                    ts-util--range-overlays)))))
+    (remove-overlays (point-min) (point-max) ts-util--overlay-name t)
+    (setq ts-util--range-overlays nil)))
+
+
+;;; Transient
+
+;;;###autoload(autoload 'ts-util-menu "ts-util")
+(transient-define-prefix ts-util-menu ()
+  "TS util"
+  ["Nodes"
+   ("l" "List" ts-util-list-nodes :transient t)]
+  ["Parsers"
+   ("r" "Show ranges" ts-util-toggle-ranges :transient t)])
 
 (provide 'ts-util)
 ;; Local Variables:

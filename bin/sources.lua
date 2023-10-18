@@ -14,7 +14,7 @@ end
 local parsers = require("nvim-treesitter.parsers")
 
 io_print("Available Parsers:")
-for _, v  in pairs(parsers.available_parsers()) do
+for _, v in pairs(parsers.available_parsers()) do
   io_print(tostring(v))
 end
 io_print("")
