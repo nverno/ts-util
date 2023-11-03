@@ -25,16 +25,36 @@
 "_" @constant
 
 ((parameters (identifier) @number)
- (#match? @number "^[-+]?[0-9]+(.[0-9]+)?$"))
+ (#match? @number "^([-+]+)?[0-9]+(.[0-9]+)?$"))
 
 ((parameters (identifier) @number)
  (#match? @number "[^0-9]*?"))
 
 ((parameters (identifier) @number)
- (#match? @number "[^0-9]*?"))
+ (#match? @number "^asdfasdf([0-9]*)?"))
 
 ((parameters (identifier) @number)
- (#match? @number "[^0-9_]?(abc)*$[1-9]*"))
+;; INFO: *test embedded comment parser*
+;;       https://github.com/stsewd/tree-sitter-comment
+;; FIXME(nverno): how to get current indentation in embedded parser from host?
+;; ERROR(asdlaa): alsdkfas alk
+;; NOTE: #12 asdf aklsd #13
+ (#match? @number
+ ;; FIXME: embedding both regex+comment parsers is mad buggy
+ ;; NOTE(ascd): regex parser ⬎
+ "^asdklfdd([^0-9]*?|.*)$[0-9]*laksdf as*$"))
+
+;; WARN: query error ⬎
+((program . lka klasdf lasdf (identifier)))
+
+;; WARN(nverno): asldkfasl
+((parameters (identifier) @number)
+ (#match?
+   @number
+   ;; TODO: askdf asdf
+   "^[^0-9]?(abckk)*$[a-zA-Z1-9]*[ksdfasd]+?\"*$"
+   ;; INFO: ldllddldl
+  ))
 
 ((program . (comment)* . (comment) @include)
  (#lua-match? @include "^;+ *inherits *:"))
