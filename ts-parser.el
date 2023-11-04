@@ -42,19 +42,19 @@
 
 ;; (defvar-keymap ts-parser-range-map)
 
-(defun ts-parser--make-overlay (begin end &optional name)
-  (let ((ov (make-overlay begin end (current-buffer) nil t)))
-    (overlay-put ov ts-parser--overlay-name t)
-    (when name (overlay-put ov name t))
-    (overlay-put ov 'face 'highlight)
-    ;; (overlay-put ov 'keymap ts-parser-range-map)
-    ;; (overlay-put ov 'insert-in-front-hooks '())
-    ;; (overlay-put ov 'insert-behind-hooks '())
-    ;; (overlay-put ov 'modification-hooks '())
-    (overlay-put ov 'priority 100)
-    ov))
-
 (defvar-local ts-parser--range-overlays nil)
+
+(defun ts-parser--make-overlay (start end &optional name)
+  (let ((ov (ts-util--make-overlay start end
+              ts-parser--overlay-name t
+              ;; 'keymap ts-parser-range-map
+              ;; 'insert-in-front-hooks '()
+              ;; 'insert-behind-hooks '()
+              ;; 'modification-hooks '()
+              'face 'highlight
+              'priority 100)))
+    (when name (overlay-put ov name t))
+    ov))
 
 (defvar-keymap ts-parser-repeat-range-map
   :repeat (:enter (ts-parser-toggle-ranges))

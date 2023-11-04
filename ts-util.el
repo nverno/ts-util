@@ -52,12 +52,29 @@
          (name (ts-util-read-buffer-language parsers)))
     (seq-filter (lambda (p) (string= name (treesit-parser-language p))) parsers)))
 
+(defun ts-util-validate-query (language query)
+  (condition-case nil
+      (progn (treesit-query-capture language query) t)
+    (treesit-query-error nil)))
+
+(defun ts-util--make-overlay (start end &rest property-values)
+  (let ((ov (make-overlay start end)))
+    (cl-loop for (k v) on property-values by #'cddr
+             do (overlay-put ov k v))
+    ov))
+(put 'ts-util--make-overlay 'lisp-indent-function 'defun)
+
 ;; -------------------------------------------------------------------
 ;;; Transient 
+
+(declare-function ts-query-remove-highlights "ts-query")
 
 ;;;###autoload(autoload 'ts-util-menu "ts-util")
 (transient-define-prefix ts-util-menu ()
   "TS util"
+  ["Query"
+   ("q" "Highlight query" ts-query-highlight-query :transient t)
+   ("Q" "Remove highlights" ts-query-remove-highlights :transient t)]
   ["Parsers"
    ("l" "List Nodes" ts-parser-list-nodes :transient t)
    ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]

@@ -71,10 +71,10 @@
 
 (defun ts-error--make-error-overlay (start end language)
   "Make error overlay from START to END for LANGUAGE."
-  (let ((ov (make-overlay start end)))
-    (overlay-put ov 'ts-error t)
-    (overlay-put ov 'face 'ts-error-face)
-    (overlay-put ov 'ts-language language)))
+  (ts-util--make-overlay start end
+    'ts-error t
+    'face 'ts-error-face
+    'ts-language language))
 
 ;;; FIXME: update in range given to `after-change-functions'
 (defun ts-error--update-errors (&optional _start _end &rest _)
