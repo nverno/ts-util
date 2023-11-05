@@ -10,7 +10,7 @@ SRCDIRS      = $(NEOVIM) $(NVIM)
 
 NEOVIM_PATH  = $(CURDIR)/$(NEOVIM)/runtime/lua
 NVIM_PATH    = $(CURDIR)/$(NVIM)/lua
-LUA_PATH     = "$(NEOVIM_PATH)/?.lua;$(NVIM_PATH)/?.lua;;"
+LUA_PATH     = $(shell luarocks path --lr-path);$(NEOVIM_PATH)/?.lua;$(NVIM_PATH)/?.lua;;
 VIM_PRELOAD  = $(NEOVIM_PATH)/vim/shared.lua
 # Exports for $(BINDIR)/sources.lua
 export LUA_PATH
