@@ -43,7 +43,7 @@
 (defun ts-util-read-buffer-language (&optional parsers)
   (or parsers (setq parsers (treesit-parser-list nil nil t)))
   (if (length< parsers 2)
-      (treesit-parser-language (car parsers))
+      (symbol-name (treesit-parser-language (car parsers)))
     (completing-read
      "Language: " (seq-uniq (mapcar #'treesit-parser-language parsers)))))
 
@@ -78,7 +78,7 @@
   (eval-when-compile (ts-util--get-sources)))
 
 ;;;###autoload
-(defun ts-util-list-sources (&optional language)
+(defun ts-util-list-parser-sources (&optional language)
   "List tree-sitter parser sources used by neovim.
 With prefix, prompt for LANGUAGE and return its source."
   (interactive (list (if current-prefix-arg (intern (read-string "Language: ")))))
@@ -114,9 +114,10 @@ With prefix, prompt for LANGUAGE and return its source."
   "TS util"
   ["Query"
    ("q" "Highlight query" ts-query-highlight-query :transient t)
-   ("Q" "Remove highlights" ts-query-remove-highlights :transient t)]
+   ("Q" "Remove highlights" ts-query-remove-highlights)]
   ["Parsers"
-   ("l" "List Nodes" ts-parser-list-nodes :transient t)
+   ("l" "List Nodes" ts-parser-list-nodes)
+   ("L" "List sources" ts-util-list-parser-sources)
    ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
   ["Errors"
    ("e" "Toggle errors" ts-error-toggle :transient t)])
