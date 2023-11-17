@@ -3,6 +3,7 @@
 Get node/field names for parsers.
 """
 import os
+import re
 
 from tree_sitter import Language
 
@@ -25,11 +26,20 @@ def get_types(lang: Language):
         if lang.node_kind_is_named(i):
             named_nodes.append(lang.node_kind_for_id(i))
         elif lang.node_kind_is_visible(i):
-            anon_nodes.append(lang.node_kind_for_id(i))
+            node = lang.node_kind_for_id(i)
+            if (
+                node
+                == """
+"""
+            ):
+                node = "\\n"
+            elif node == "	":
+                node = "\\t"
+            anon_nodes.append(node)
     for i in range(1, lang.field_count + 1):
         fields.append(lang.field_name_for_id(i))
 
-    return named_nodes, anon_nodes, fields
+    return sorted(named_nodes), anon_nodes, sorted(fields)
 
 
 def main():
@@ -49,6 +59,7 @@ def main():
 
     lang = get_lang(args.name, args.path)
     named, anon, fields = get_types(lang)
+
     if args.type == "named":
         print("\n".join(named))
     elif args.type == "field":
@@ -56,9 +67,9 @@ def main():
     elif args.type == "anon":
         print("\n".join(anon))
     else:
-        print("Named:\n\t", "\n\t ".join(named))
-        print("Anon:\n\t", "\n\t ".join(anon))
-        print("Fields:\n\t", "\n\t ".join(fields))
+        print("Named:\n\t" + "\n\t".join(named), end="\n\n")
+        print("Anon:\n\t" + "\n\t".join(anon), end="\n\n")
+        print("Fields:\n\t" + "\n\t".join(fields), end="\n\n")
 
 
 if __name__ == "__main__":

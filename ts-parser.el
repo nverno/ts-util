@@ -76,6 +76,25 @@
     (remove-overlays (point-min) (point-max) ts-parser--overlay-name t)
     (setq ts-parser--range-overlays nil)))
 
+(defvar-keymap ts-node-mode-map
+  "<tab>" #'hs-toggle-hiding)
+
+(define-derived-mode ts-node-mode fundamental-mode "Nodes"
+  "Mode for viewing parser nodes."
+  (require 'hideshow)
+  (setq-local comment-start "")
+  (setq-local hs-special-modes-alist
+              `((ts-node-mode ,(rx bol (or "Named" "Anon" "Fields") ":")
+                              "^$")))
+  (setq-local forward-sexp-function     ; for hideshow
+              (lambda (&optional arg) (re-search-forward "^$" nil t (or arg 1))))
+  (hs-minor-mode)
+  (hs-hide-all)
+  (view-mode)
+  (message
+   (substitute-command-keys
+    "Press \\<ts-node-mode-map>\\[hs-toggle-hiding] to toggle section hiding")))
+
 ;;;###autoload
 (defun ts-parser-list-nodes (parser &optional types)
   "Get node and field names for PARSER.
@@ -95,9 +114,9 @@ With \\[universal-argument] prompt for TYPES to limit results."
                (or types "all") name parser)
        nil (get-buffer-create bufname) t))
     (with-current-buffer bufname
-      (view-mode)
-      (goto-char (point-min)))
-    (display-buffer bufname)))
+      (goto-char (point-min))
+      (ts-node-mode)
+      (pop-to-buffer (current-buffer)))))
 
 (provide 'ts-parser)
 ;; Local Variables:
