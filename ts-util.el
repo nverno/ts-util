@@ -31,14 +31,15 @@
 (require 'treesit)
 (require 'transient)
 
-(defvar ts-util--dir
-  (file-name-as-directory
-   (directory-file-name
-    (file-name-directory
-     (cond (load-in-progress load-file-name)
-           ((and (boundp 'byte-compile-current-file) byte-compile-current-file)
-            byte-compile-current-file)
-           (t (buffer-file-name)))))))
+(eval-and-compile
+  (defvar ts-util--dir
+    (file-name-as-directory
+     (directory-file-name
+      (file-name-directory
+       (cond (load-in-progress load-file-name)
+             ((and (boundp 'byte-compile-current-file) byte-compile-current-file)
+              byte-compile-current-file)
+             (t (buffer-file-name))))))))
 
 (defun ts-util-read-buffer-language (&optional parsers)
   (or parsers (setq parsers (treesit-parser-list nil nil t)))
@@ -65,14 +66,15 @@
 (put 'ts-util--make-overlay 'lisp-indent-function 'defun)
 
 ;; Get neovim tree-sitter parser sources
-(defun ts-util--get-sources ()
-  (with-temp-buffer
-    (when (zerop
-           (call-process-shell-command
-            (expand-file-name "bin/sources.lua" ts-util--dir)
-            nil (current-buffer)))
-      (goto-char (point-min))
-      (read (current-buffer)))))
+(eval-and-compile
+  (defun ts-util--get-sources ()
+    (with-temp-buffer
+      (when (zerop
+             (call-process-shell-command
+              (expand-file-name "bin/sources.lua" ts-util--dir)
+              nil (current-buffer)))
+        (goto-char (point-min))
+        (read (current-buffer))))))
 
 (defvar ts-util-parser-sources
   (eval-when-compile (ts-util--get-sources)))

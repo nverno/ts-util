@@ -28,6 +28,9 @@
 
 (require 'ts-util)
 
+(declare-function hs-hide-all "hideshow")
+(declare-function hs-toggle-hiding "hideshow")
+
 (defvar ts-parser-directory (locate-user-emacs-file "tree-sitter/")
   "Directory containing tree-sitter parsers.")
 
