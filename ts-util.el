@@ -3,7 +3,7 @@
 ;; Author: Noah Peart <noah.v.peart@gmail.com>
 ;; URL: https://github.com/nverno/ts-util
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "29.1"))
+;; Package-Requires: ((emacs "29.1") (dash "2.19"))
 ;; Created: 15 October 2023
 ;; Keywords: tools
 
@@ -27,7 +27,9 @@
 ;;; Commentary:
 ;;; Code:
 
-(eval-when-compile 'cl-lib)
+(eval-when-compile
+  (require 'cl-lib)
+  (require 'dash))
 (require 'treesit)
 (require 'transient)
 

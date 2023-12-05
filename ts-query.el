@@ -55,25 +55,18 @@ face (eg. \\='@error) or \\='hightlight."
     res))
 
 (defun ts-query-remove-highlights (&optional start end lang)
-  "Remove LANG, or all, query highlights from buffer."
+  "Remove query highlights in buffer from START to END.
+With prefix, remove hightlights for LANG."
   (interactive
    (let ((region-p (region-active-p)))
      (list (if region-p (region-beginning) (point-min))
            (if region-p (region-end) (point-max))
            (and current-prefix-arg ts-query--langs
                 (intern (concat ":" (completing-read "Remove: " ts-query--langs)))))))
-  (let ((args `(,start ,end ,@(if lang `('ts-lang ',lang) '('ts-query t)))))
-    (message "args: %S" args)
-    (apply #'remove-overlays args))
-  ;; (let (langs)
-  ;;   (dolist (ov (overlay-lists))
-  ;;     (when (overlay-get ov 'ts-query)
-  ;;       (push (overlay-get )))
-  ;;    (overlays-in (point-min) (point-max)))
-  ;;   (dolist (ov ())))
-  ;; (setq ts-query--langs
-  ;;       (and lang (seq-filter (lambda (e) (not (eq e lang))) ts-query--langs)))
-  )
+  (funcall #'remove-overlays start end (if lang
+                                           (list 'ts-lang lang)
+                                         (list 'ts-query t)))
+  (setq ts-query--langs (and lang (--filter (not (eq it lang)) ts-query--langs))))
 
 (provide 'ts-query)
 ;; Local Variables:
