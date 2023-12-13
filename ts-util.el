@@ -67,51 +67,12 @@
     ov))
 (put 'ts-util--make-overlay 'lisp-indent-function 'defun)
 
-;; Get neovim tree-sitter parser sources
-(eval-and-compile
-  (defun ts-util--get-sources ()
-    (with-temp-buffer
-      (when (zerop
-             (call-process-shell-command
-              (expand-file-name "bin/sources.lua" ts-util--dir)
-              nil (current-buffer)))
-        (goto-char (point-min))
-        (read (current-buffer))))))
-
-(defvar ts-util-parser-sources
-  (eval-when-compile (ts-util--get-sources)))
-
-;;;###autoload
-(defun ts-util-list-parser-sources (&optional language)
-  "List tree-sitter parser sources used by neovim.
-With prefix, prompt for LANGUAGE and return its source."
-  (interactive (list (if current-prefix-arg (intern (read-string "Language: ")))))
-  (let ((sources (or ts-util-parser-sources
-                     (setq ts-util-parser-sources
-                           (ts-util--get-sources)))))
-    (unless sources
-      (user-error "Failed to get neovim sources (is nvim installed?)."))
-    (if language (let ((source (cadr (assq language sources))))
-                   (prog1 source
-                     (message source)))
-      (with-current-buffer (get-buffer-create "*treesitter-parsers*")
-        (erase-buffer)
-        (setq tabulated-list-format [("Parser" 10 t) ("Source" 30 t)])
-        (setq tabulated-list-entries
-              (mapcar (lambda (e)
-                        (list (car e) (vector (symbol-name (car e)) (cadr e))))
-                      sources))
-        (setq tabulated-list-sort-key '("Parser" . nil))
-        (tabulated-list-mode)
-        (tabulated-list-init-header)
-        (tabulated-list-print)
-        (setq mode-name "ts-parsers")
-        (pop-to-buffer (current-buffer))))))
-
 ;; -------------------------------------------------------------------
 ;;; Transient 
 
 (declare-function ts-query-remove-highlights "ts-query")
+(declare-function ts-parser-list-sources "ts-parser")
+(declare-function ts-parser-list-nodes "ts-parser")
 
 ;;;###autoload(autoload 'ts-util-menu "ts-util")
 (transient-define-prefix ts-util-menu ()
@@ -121,7 +82,7 @@ With prefix, prompt for LANGUAGE and return its source."
    ("Q" "Remove highlights" ts-query-remove-highlights)]
   ["Parsers"
    ("l" "List Nodes" ts-parser-list-nodes)
-   ("L" "List sources" ts-util-list-parser-sources)
+   ("L" "List sources" ts-parser-list-sources)
    ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
   ["Errors"
    ("e" "Toggle errors" ts-error-toggle :transient t)])

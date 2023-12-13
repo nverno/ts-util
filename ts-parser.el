@@ -99,7 +99,7 @@
     "Press \\<ts-node-mode-map>\\[hs-toggle-hiding] to toggle section hiding")))
 
 ;;;###autoload
-(defun ts-parser-list-nodes (parser &optional types)
+(defun ts-parser-nodes (parser &optional types)
   "Get node and field names for PARSER.
 With \\[universal-argument] prompt for TYPES to limit results."
   (interactive
@@ -119,6 +119,71 @@ With \\[universal-argument] prompt for TYPES to limit results."
     (with-current-buffer bufname
       (goto-char (point-min))
       (ts-node-mode)
+      (pop-to-buffer (current-buffer)))))
+
+;; -------------------------------------------------------------------
+;;; Parser List Mode
+
+;; Get neovim tree-sitter parser sources
+(eval-and-compile
+  (defun ts-parser--get-sources ()
+    (with-current-buffer (get-buffer-create "*ts-sources*")
+      (erase-buffer)
+      (when (zerop
+             (call-process-shell-command
+              (expand-file-name "bin/sources.lua" ts-util--dir)
+              nil (current-buffer)))
+        (goto-char (point-min))
+        (read (current-buffer))))))
+
+(defvar ts-parser--sources (eval-when-compile (ts-parser--get-sources)))
+(defun ts-parser-sources ()
+  (or ts-parser--sources
+      (setq ts-parser--sources (ts-parser--get-sources))
+      (user-error "Failed to get neovim sources (is nvim installed?)")))
+
+(defun ts-parser-list-browse-grammar ()
+  "Browse the url of the grammar at point."
+  (interactive)
+  (when-let ((entry (tabulated-list-get-entry (point))))
+    (browse-url (elt entry 1))))
+
+(defun ts-parser-list-install-grammar ()
+  "Install the tree-sitter grammar at point, using neovim recipe."
+  (interactive)
+  (when-let ((entry (tabulated-list-get-entry (point))))
+    (let* ((lang (tabulated-list-get-id (point)))
+           (lst (mapcar (lambda (s) (if (string-empty-p s) nil s))
+                        (append entry nil)))
+           (treesit-language-source-alist (list (cons lang (cdr lst)))))
+      (treesit-install-language-grammar lang))))
+
+(defvar ts-parser-list-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "b" #'ts-parser-list-browse-grammar)
+    (define-key map "i" #'ts-parser-list-install-grammar)
+    map))
+
+(define-derived-mode ts-parser-list-mode tabulated-list-mode "TsParser"
+  "Mode to view neovim tree-sitter parsers."
+  (setq tabulated-list-format
+        [("Parser" 10 t) ("Url" 50 t) ("Revision" 8 t) ("Location" 15 t)])
+  (setq tabulated-list-sort-key '("Parser" . nil))
+  (setq tabulated-list-entries (ts-parser-sources))
+  (tabulated-list-init-header)
+  (tabulated-list-print))
+
+;;;###autoload
+(defun ts-parser-list-sources (&optional language)
+  "List tree-sitter parser sources used by neovim.
+With prefix, prompt for LANGUAGE and return its source."
+  (interactive (list (if current-prefix-arg (intern (read-string "Language: ")))))
+  (if language
+      (let ((source (cadr (assq language (ts-parser-sources)))))
+        (prog1 source
+          (message source)))
+    (with-current-buffer (get-buffer-create "*treesitter-parsers*")
+      (ts-parser-list-mode)
       (pop-to-buffer (current-buffer)))))
 
 (provide 'ts-parser)

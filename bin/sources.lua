@@ -32,7 +32,7 @@ local parsers = require("nvim-treesitter.parsers")
 
 if lang then
   local info = parsers.list[lang]
-  if nil then
+  if info then
     print(info.install_info.url)
     os.exit(0)
   end
@@ -40,8 +40,19 @@ if lang then
   os.exit(1)
 end
 
+--- Format parser install info for elisp reader
+--- eg. (lang [lang url revision source-dir])
+--- @param lang string
+--- @param config InstallInfo
+local function format_parser_info(lang, config)
+  return string.format("(%s [%q %q %q %q])",
+    lang, lang, config.url,
+    config.revision or "", config.location or ""
+  )
+end
+
 print("(")
 for k, v in pairs(parsers.get_parser_configs()) do
-  print("(" .. k .. " \"" .. tostring(v.install_info.url) .. "\")")
+  print(format_parser_info(k, v.install_info))
 end
 print(")")
