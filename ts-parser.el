@@ -34,6 +34,12 @@
 (defvar ts-parser-directory (locate-user-emacs-file "tree-sitter/")
   "Directory containing tree-sitter parsers.")
 
+(defvar ts-parser-nvim-treesitter-directory (expand-file-name "~/src/nvim-treesitter")
+  "Path to nvim-treesitter source directory.")
+
+(defvar ts-parser-neovim-directory (expand-file-name "~/src/neovim")
+  "Path to neovim source directory.")
+
 (eval-when-compile
   (defsubst ts:parser-lib-name (lib)
     (car (last (split-string (file-name-sans-extension lib) "-"))))
@@ -99,7 +105,7 @@
     "Press \\<ts-node-mode-map>\\[hs-toggle-hiding] to toggle section hiding")))
 
 ;;;###autoload
-(defun ts-parser-nodes (parser &optional types)
+(defun ts-parser-list-nodes (parser &optional types)
   "Get node and field names for PARSER.
 With \\[universal-argument] prompt for TYPES to limit results."
   (interactive
@@ -129,12 +135,17 @@ With \\[universal-argument] prompt for TYPES to limit results."
   (defun ts-parser--get-sources ()
     (with-current-buffer (get-buffer-create "*ts-sources*")
       (erase-buffer)
-      (when (zerop
-             (call-process-shell-command
-              (expand-file-name "bin/sources.lua" ts-util--dir)
-              nil (current-buffer)))
-        (goto-char (point-min))
-        (read (current-buffer))))))
+      (if (zerop (call-process-shell-command
+                  (format
+                   "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
+                   ts-parser-neovim-directory
+                   ts-parser-nvim-treesitter-directory
+                   (expand-file-name "bin/sources.lua" ts-util--dir))
+                  nil (current-buffer)))
+          (progn (goto-char (point-min))
+                 (prog1 (read (current-buffer))
+                   (kill-buffer)))
+        (pop-to-buffer (current-buffer))))))
 
 (defvar ts-parser--sources (eval-when-compile (ts-parser--get-sources)))
 (defun ts-parser-sources ()
