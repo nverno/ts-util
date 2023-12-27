@@ -28,17 +28,23 @@
 
 (require 'ts-util)
 
+(declare-function xterm-color-filter "xterm-color")
 (declare-function hs-hide-all "hideshow")
 (declare-function hs-toggle-hiding "hideshow")
+
 
 (defvar ts-parser-directory (locate-user-emacs-file "tree-sitter/")
   "Directory containing tree-sitter parsers.")
 
-(defvar ts-parser-nvim-treesitter-directory (expand-file-name "~/src/nvim-treesitter")
-  "Path to nvim-treesitter source directory.")
+(defvar ts-parser-grammar-directory (expand-file-name "~/scratch/parsers/")
+  "Directory to download/build grammar sources.")
 
-(defvar ts-parser-neovim-directory (expand-file-name "~/src/neovim")
-  "Path to neovim source directory.")
+(eval-and-compile
+  (defvar ts-parser-nvim-treesitter-directory (expand-file-name "~/src/nvim-treesitter/")
+    "Path to nvim-treesitter source directory.")
+
+  (defvar ts-parser-neovim-directory (expand-file-name "~/src/neovim/")
+    "Path to neovim source directory."))
 
 (eval-when-compile
   (defsubst ts:parser-lib-name (lib)
@@ -115,11 +121,9 @@ With \\[universal-argument] prompt for TYPES to limit results."
   (let* ((name (ts:parser-lib-name parser))
          (bufname (format "*%s-nodes*" name)))
     (unless (get-buffer bufname)
-      ;; (process-lines
-      ;;  "python3" (expand-file-name "bin/nodes.py" ts-util--dir)
-      ;;  "-t" (or types "all") name parser)
       (call-process-shell-command
-       (format "%s -t %s %s %s" (expand-file-name "bin/nodes.py" ts-util--dir)
+       (format "python %s -t %s %s %s"
+               (expand-file-name "bin/nodes.py" ts-util--dir)
                (or types "all") name parser)
        nil (get-buffer-create bufname) t))
     (with-current-buffer bufname
@@ -130,22 +134,49 @@ With \\[universal-argument] prompt for TYPES to limit results."
 ;; -------------------------------------------------------------------
 ;;; Parser List Mode
 
-;; Get neovim tree-sitter parser sources
 (eval-and-compile
+  (defmacro ts-parser:call-process (cmd &rest on-success)
+    (declare (indent 1))
+    (let ((res (make-symbol "res")))
+      `(with-current-buffer (get-buffer-create "*ts-parser*")
+         (erase-buffer)
+         (let ((,res ,cmd))
+           (if (processp ,res)
+               (cl-letf ((filter
+                          (lambda (p s)
+                            (when (buffer-live-p (process-buffer p))
+                              (with-current-buffer (process-buffer p)
+                                (let ((inhibit-read-only t))
+                                  (goto-char (point-max))
+                                  (insert (xterm-color-filter
+                                           (replace-regexp-in-string
+                                            "[\r\n]+" "\n" s))))))))
+                         (callback
+                          (lambda (p _m)
+                            (with-current-buffer (process-buffer p)
+                              (if (zerop (process-exit-status p))
+                                  (unwind-protect (progn ,@on-success)
+                                    (kill-buffer))
+                                (pop-to-buffer (current-buffer)))))))
+                 (set-process-filter ,res filter)
+                 (set-process-sentinel ,res callback))
+             (if (zerop ,res)
+                 (unwind-protect (progn ,@on-success)
+                   (kill-buffer))
+               (pop-to-buffer (current-buffer))))))))
+
+  ;; Get neovim tree-sitter parser sources
   (defun ts-parser--get-sources ()
-    (with-current-buffer (get-buffer-create "*ts-sources*")
-      (erase-buffer)
-      (if (zerop (call-process-shell-command
-                  (format
-                   "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
-                   ts-parser-neovim-directory
-                   ts-parser-nvim-treesitter-directory
-                   (expand-file-name "bin/sources.lua" ts-util--dir))
-                  nil (current-buffer)))
-          (progn (goto-char (point-min))
-                 (prog1 (read (current-buffer))
-                   (kill-buffer)))
-        (pop-to-buffer (current-buffer))))))
+    (ts-parser:call-process
+        (call-process-shell-command
+         (format
+          "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
+          ts-parser-neovim-directory
+          ts-parser-nvim-treesitter-directory
+          (expand-file-name "bin/sources.lua" ts-util--dir))
+         nil (current-buffer))
+      (goto-char (point-min))
+      (read (current-buffer)))))
 
 (defvar ts-parser--sources (eval-when-compile (ts-parser--get-sources)))
 (defun ts-parser-sources ()
@@ -169,10 +200,35 @@ With \\[universal-argument] prompt for TYPES to limit results."
            (treesit-language-source-alist (list (cons lang (cdr lst)))))
       (treesit-install-language-grammar lang))))
 
+(defun ts-parser-list-build-grammar ()
+  "Download and build grammar at point in `ts-parser-grammar-directory'."
+  (interactive)
+  (when-let* ((entry (tabulated-list-get-entry (point)))
+              (url (elt entry 1)))
+    (unless (file-exists-p ts-parser-grammar-directory)
+      (make-directory ts-parser-grammar-directory t))
+    (let* ((default-directory ts-parser-grammar-directory)
+           (src-dir (expand-file-name (file-name-base url))))
+      (if (file-exists-p src-dir)
+          (dired src-dir)
+        (message "Building %s in %s..." url src-dir)
+        (ts-parser:call-process
+            (start-process-shell-command
+             "ts-grammar" (current-buffer)
+             (concat "git clone --depth=1 " url
+                     "&& cd " src-dir
+                     "&& npm --loglevel=info --progress=true install"
+                     "&& {\nnpm run generate || true\n}"))
+          (let ((grammar (expand-file-name "grammar.js" src-dir)))
+            (if (file-exists-p grammar)
+                (find-file-other-window grammar)
+              (dired src-dir))))))))
+
 (defvar ts-parser-list-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "b" #'ts-parser-list-browse-grammar)
+    (define-key map "w" #'ts-parser-list-browse-grammar)
     (define-key map "i" #'ts-parser-list-install-grammar)
+    (define-key map "b" #'ts-parser-list-build-grammar)
     map))
 
 (define-derived-mode ts-parser-list-mode tabulated-list-mode "TsParser"

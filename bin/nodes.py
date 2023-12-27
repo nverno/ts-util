@@ -3,7 +3,6 @@
 Get node/field names for parsers.
 """
 import os
-import re
 
 from tree_sitter import Language
 
@@ -17,7 +16,7 @@ def get_lang(name: str, path: str):
     return Language(path, name)
 
 
-def get_types(lang: Language):
+def get_types(lang):
     named_nodes = []
     anon_nodes = []
     fields = []
