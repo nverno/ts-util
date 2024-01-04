@@ -125,15 +125,15 @@
   ;; Get neovim tree-sitter parser sources
   (defun ts-util--get-sources ()
     (ts-util:call-process
-        (call-process-shell-command
-         (format
-          "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
-          ts-util-neovim-directory
-          ts-util-nvim-treesitter-directory
-          (expand-file-name "bin/sources.lua" ts-util--dir))
-         nil (current-buffer))
-      (goto-char (point-min))
-      (read (current-buffer)))))
+     (call-process-shell-command
+      (format
+       "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
+       ts-util-neovim-directory
+       ts-util-nvim-treesitter-directory
+       (expand-file-name "bin/sources.lua" ts-util--dir))
+      nil (current-buffer))
+     (goto-char (point-min))
+     (read (current-buffer)))))
 
 (defvar ts-util--sources (eval-when-compile (ts-util--get-sources)))
 (defun ts-util-sources ()
@@ -173,12 +173,12 @@ exists."
         (cons src-dir nil)
       (let* ((cmd (concat "git clone --depth=1 " url))
              (proc (ts-util:call-process
-                       (start-process-shell-command
-                        "ts-source" (current-buffer)
-                        (if (not build) cmd
-                          (concat
-                           cmd "&& cd " src-dir
-                           "&& npm --loglevel=info --progress=true install"))))))
+                    (start-process-shell-command
+                     "ts-source" (current-buffer)
+                     (if (not build) cmd
+                       (concat
+                        cmd "&& cd " src-dir
+                        "&& npm --loglevel=info --progress=true install"))))))
         (cons src-dir proc)))))
 
 (defun ts-util-clone-grammar (url &optional build callback)
@@ -260,22 +260,21 @@ With prefix, look for the queries from the source repo."
 ;;; Transient
 
 (declare-function ts-query-remove-highlights "ts-query")
-(declare-function ts-util-list-sources "ts-parser")
 (declare-function ts-parser-list-nodes "ts-parser")
 
 ;;;###autoload(autoload 'ts-util-menu "ts-util")
 (transient-define-prefix ts-util-menu ()
   "TS util"
-  ["Query"
-   ("q" "Highlight query" ts-query-highlight-query :transient t)
-   ("Q" "Remove highlights" ts-query-remove-highlights)
-   ("j" "Jump to queries" ts-util-jump-to-queries)]
-  ["Parsers"
-   ("l" "List Nodes" ts-parser-list-nodes)
-   ("L" "List sources" ts-util-list-sources)
-   ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
-  ["Errors"
-   ("e" "Toggle errors" ts-error-toggle :transient t)])
+  [["Query"
+    ("q" "Highlight query" ts-query-highlight-query :transient t)
+    ("Q" "Remove highlights" ts-query-remove-highlights)
+    ("j" "Jump to queries" ts-util-jump-to-queries)]
+   ["Parsers"
+    ("l" "List Nodes" ts-parser-list-nodes)
+    ("L" "List sources" ts-util-list-sources)
+    ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
+   ["Errors"
+    ("e" "Toggle errors" ts-error-toggle :transient t)]])
 
 (provide 'ts-util)
 ;; Local Variables:
