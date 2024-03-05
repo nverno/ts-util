@@ -86,56 +86,59 @@
 ;; -------------------------------------------------------------------
 ;;; Parser Sources used by Neovim
 
-(eval-and-compile
-  (defmacro ts-util:call-process (cmd &rest on-success)
-    (declare (indent 1))
-    (let ((res (make-symbol "res")))
-      `(with-current-buffer (get-buffer-create
-                             (generate-new-buffer-name "*ts-util*"))
-         (let ((,res ,cmd))
-           (if (processp ,res)
-               (cl-letf (;; (filter
-                         ;;  (lambda (p s)
-                         ;;    (when (buffer-live-p (process-buffer p))
-                         ;;      (with-current-buffer (process-buffer p)
-                         ;;        (let ((inhibit-read-only t))
-                         ;;          (goto-char (point-max))
-                         ;;          (insert (xterm-color-filter
-                         ;;                   (replace-regexp-in-string
-                         ;;                    "[\r\n]+" "\n" s))))))))
-                         (callback
-                          (lambda (p _m)
-                            (with-current-buffer (process-buffer p)
-                              (if (zerop (process-exit-status p))
-                                  (unwind-protect (progn ,@on-success)
-                                    (kill-buffer))
-                                (pop-to-buffer (current-buffer)))))))
-                 (require 'shell)
-                 (setq mode-line-process '(":%s"))
-                 (let (shell-mode-hook)
-                   (shell-mode))
-                 (set-process-filter ,res #'comint-output-filter)
-                 (set-process-sentinel ,res callback)
-                 ,res)
-             (if (zerop ,res)
-                 (unwind-protect (progn ,@on-success)
-                   (kill-buffer))
-               (pop-to-buffer (current-buffer))))))))
+(defvar shell-mode-hook)
+(declare-function shell-mode "shell")
 
-  ;; Get neovim tree-sitter parser sources
-  (defun ts-util--get-sources ()
-    (ts-util:call-process
-     (call-process-shell-command
-      (format
-       "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
-       ts-util-neovim-directory
-       ts-util-nvim-treesitter-directory
-       (expand-file-name "bin/sources.lua" ts-util--dir))
-      nil (current-buffer))
-     (goto-char (point-min))
-     (read (current-buffer)))))
+(defmacro ts-util:call-process (cmd &rest on-success)
+  (declare (indent 1))
+  (let ((res (make-symbol "res")))
+    `(with-current-buffer (get-buffer-create
+                           (generate-new-buffer-name "*ts-util*"))
+       (let ((,res ,cmd))
+         (if (processp ,res)
+             (cl-letf (;; (filter
+                       ;;  (lambda (p s)
+                       ;;    (when (buffer-live-p (process-buffer p))
+                       ;;      (with-current-buffer (process-buffer p)
+                       ;;        (let ((inhibit-read-only t))
+                       ;;          (goto-char (point-max))
+                       ;;          (insert (xterm-color-filter
+                       ;;                   (replace-regexp-in-string
+                       ;;                    "[\r\n]+" "\n" s))))))))
+                       (callback
+                        (lambda (p _m)
+                          (with-current-buffer (process-buffer p)
+                            (if (zerop (process-exit-status p))
+                                (unwind-protect (progn ,@on-success)
+                                  (kill-buffer))
+                              (pop-to-buffer (current-buffer)))))))
+               (require 'shell)
+               (setq mode-line-process '(":%s"))
+               (let (shell-mode-hook)
+                 (shell-mode))
+               (set-process-filter ,res #'comint-output-filter)
+               (set-process-sentinel ,res callback)
+               ,res)
+           (if (zerop ,res)
+               (unwind-protect (progn ,@on-success)
+                 (kill-buffer))
+             (pop-to-buffer (current-buffer))))))))
 
-(defvar ts-util--sources (eval-when-compile (ts-util--get-sources)))
+;; Get neovim tree-sitter parser sources
+(defun ts-util--get-sources ()
+  (ts-util:call-process
+      (call-process-shell-command
+       (format
+        "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
+        ts-util-neovim-directory
+        ts-util-nvim-treesitter-directory
+        (expand-file-name "bin/sources.lua" ts-util--dir))
+       nil (current-buffer))
+    (goto-char (point-min))
+    (read (current-buffer))))
+
+(defvar ts-util--sources (ignore-errors (ts-util--get-sources)))
+
 (defun ts-util-sources ()
   (or ts-util--sources
       (setq ts-util--sources (ts-util--get-sources))
@@ -262,7 +265,7 @@ With prefix, look for the queries from the source repo."
 (declare-function ts-query-remove-highlights "ts-query")
 (declare-function ts-parser-list-nodes "ts-parser")
 
-;;;###autoload(autoload 'ts-util-menu "ts-util")
+;;;###autoload(autoload 'ts-util-menu "ts-util" nil t)
 (transient-define-prefix ts-util-menu ()
   "TS util"
   [["Query"
