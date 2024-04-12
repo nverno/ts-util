@@ -259,6 +259,26 @@ With prefix, look for the queries from the source repo."
                (url (elt (car (assoc-default (intern lang) (ts-util-sources))) 1)))
       (ts-util-clone-grammar url nil callback))))
 
+;;;###autoload
+(defun ts-util-extract-corpus-tests (corpus &optional buffer show)
+  "Extract code examples from tree-sitter CORPUS file.
+Insert results into BUFFER if non-nil. Prompt for BUFFER with prefix.
+If SHOW is non-nil pop to results buffer."
+  (interactive
+   (list (read-file-name "Corpus: ")
+         (and current-prefix-arg (read-buffer "Output buffer: ")) t))
+  (let ((exe (expand-file-name "bin/corpus.rb" ts-util--dir))
+        (buf (or buffer
+                 (let ((bufname
+                        (format "*ts-util[%s]*"
+                                (file-name-base
+                                 (file-name-sans-extension corpus)))))
+                   (with-current-buffer (get-buffer-create bufname)
+                     (erase-buffer)
+                     (current-buffer))))))
+    (call-process exe corpus buf show)
+    (and show (pop-to-buffer buf))))
+
 ;; -------------------------------------------------------------------
 ;;; Transient
 
@@ -277,7 +297,9 @@ With prefix, look for the queries from the source repo."
     ("L" "List sources" ts-util-list-sources)
     ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
    ["Errors"
-    ("e" "Toggle errors" ts-error-toggle :transient t)]])
+    ("e" "Toggle errors" ts-error-toggle :transient t)]
+   ["Tests"
+    ("x" "Extract corpus tests" ts-util-extract-corpus-tests)]])
 
 (provide 'ts-util)
 ;; Local Variables:

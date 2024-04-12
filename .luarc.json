@@ -8,8 +8,8 @@
       "lua",
       "$VIMRUNTIME",
       "${3rd}/luv/library",
-      "./neovim/runtime/lua",
-      "./nvim-treesitter/lua"
+      "~/src/neovim/runtime/lua",
+      "~/src/nvim-treesitter/lua"
     ],
     "checkThirdParty": false
   },
