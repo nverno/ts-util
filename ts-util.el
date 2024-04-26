@@ -144,6 +144,19 @@
       (setq ts-util--sources (ts-util--get-sources))
       (user-error "Failed to get neovim sources (is nvim installed?)")))
 
+;;;###autoload
+(defun ts-util-add-treesit-sources ()
+  "Add sources to `treesit-language-source-alist'."
+  (interactive)
+  (pcase-dolist (`(,src [,_ ,url ,revision ,src-dir]) (ts-util-sources))
+    (and src-dir
+         (not (string-empty-p src-dir))
+         (not (string-suffix-p "src" src-dir))
+         (setq src-dir (concat src-dir "/src")))
+    (add-to-list 'treesit-language-source-alist
+                 (mapcar (lambda (e) (if (string= e "") nil e))
+                         (list src url revision src-dir)))))
+
 ;; -------------------------------------------------------------------
 ;;; Parser List Mode
 
