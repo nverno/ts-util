@@ -5,7 +5,7 @@
 ;; Version: 0.0.1
 ;; Package-Requires: ((emacs "29.1") (dash "2.19"))
 ;; Created: 15 October 2023
-;; Keywords: tools
+;; Keywords: tree-sitter, tools, convenience
 
 ;; This file is not part of GNU Emacs.
 ;;
@@ -32,8 +32,6 @@
   (require 'dash))
 (require 'treesit)
 (require 'transient)
-
-(declare-function xterm-color-filter "xterm-color")
 
 
 (defvar ts-util-parser-directory (locate-user-emacs-file "tree-sitter/")
@@ -96,16 +94,7 @@
                            (generate-new-buffer-name "*ts-util*"))
        (let ((,res ,cmd))
          (if (processp ,res)
-             (cl-letf (;; (filter
-                       ;;  (lambda (p s)
-                       ;;    (when (buffer-live-p (process-buffer p))
-                       ;;      (with-current-buffer (process-buffer p)
-                       ;;        (let ((inhibit-read-only t))
-                       ;;          (goto-char (point-max))
-                       ;;          (insert (xterm-color-filter
-                       ;;                   (replace-regexp-in-string
-                       ;;                    "[\r\n]+" "\n" s))))))))
-                       (callback
+             (cl-letf ((callback
                         (lambda (p _m)
                           (with-current-buffer (process-buffer p)
                             (if (zerop (process-exit-status p))
@@ -160,11 +149,18 @@
 ;; -------------------------------------------------------------------
 ;;; Parser List Mode
 
-(defun ts-util-browse-grammar ()
-  "Browse the url of the grammar at point."
-  (interactive)
-  (when-let ((entry (tabulated-list-get-entry (point))))
-    (browse-url (elt entry 1))))
+;;;###autoload
+(defun ts-util-browse-repo (entry)
+  "Goto the source repo for parser.
+When called from `ts-util-sources-mode' use the grammar at point.
+Otherwise, prompt for ENTRY."
+  (interactive
+   (list (if (eq major-mode 'ts-util-sources-mode)
+             (tabulated-list-get-entry (point))
+           (let ((srcs (ts-util-sources)))
+             (and-let* ((grammar (completing-read "Grammar: " srcs nil t)))
+               (car (assoc-default (intern grammar) srcs)))))))
+  (and entry (browse-url (elt entry 1))))
 
 (defun ts-util-install-grammar ()
   "Install the tree-sitter grammar at point, using neovim recipe."
@@ -189,12 +185,12 @@ exists."
         (cons src-dir nil)
       (let* ((cmd (concat "git clone --depth=1 " url))
              (proc (ts-util:call-process
-                    (start-process-shell-command
-                     "ts-source" (current-buffer)
-                     (if (not build) cmd
-                       (concat
-                        cmd "&& cd " src-dir
-                        "&& npm --loglevel=info --progress=true install"))))))
+                       (start-process-shell-command
+                        "ts-source" (current-buffer)
+                        (if (not build) cmd
+                          (concat
+                           cmd "&& cd " src-dir
+                           "&& npm --loglevel=info --progress=true install"))))))
         (cons src-dir proc)))))
 
 (defun ts-util-clone-grammar (url &optional build callback)
@@ -228,7 +224,7 @@ With prefix, attempt to BUILD after cloning."
         (funcall go-fn src-dir)))))
 
 (defvar-keymap ts-util-sources-mode-map
-  "w" #'ts-util-browse-grammar
+  "w" #'ts-util-browse-repo
   "i" #'ts-util-install-grammar
   "c" #'ts-util-clone-grammar)
 

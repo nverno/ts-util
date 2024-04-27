@@ -1,22 +1,23 @@
-SHELL  = /bin/bash
-BINDIR = $(CURDIR)/bin
+SHELL   = /bin/bash
+BINDIR  = $(CURDIR)/bin
 
-NEOVIM_REPO  =  https://github.com/neovim/neovim
-NVIM_TS_REPO =  https://github.com/nvim-treesitter/nvim-treesitter
+NEOVIM_REPO   = https://github.com/neovim/neovim
+NVIM_TS_REPO  = https://github.com/nvim-treesitter/nvim-treesitter
 NEOVIM_DIR   ?= $(shell echo "$$HOME/src/neovim")
 NVIM_DIR     ?= $(shell echo "$$HOME/src/nvim-treesitter")
-SRCDIRS      =  $(NEOVIM_DIR) $(NVIM_DIR)
+SRCDIRS       = $(NEOVIM_DIR) $(NVIM_DIR)
 
-NEOVIM_PATH = $(NEOVIM_DIR)/runtime/lua
-NVIM_PATH   = $(NVIM_DIR)/lua
-LUA_PATH    = $(shell luarocks path --lr-path);$(NEOVIM_PATH)/?.lua;$(NVIM_PATH)/?.lua;;
-VIM_PRELOAD = $(NEOVIM_PATH)/vim/shared.lua
+# Lua path
+NEOVIM_PATH  = $(NEOVIM_DIR)/runtime/lua
+NVIM_PATH    = $(NVIM_DIR)/lua
+LUA_PATH     = $(shell luarocks path --lr-path);$(NEOVIM_PATH)/?.lua;$(NVIM_PATH)/?.lua;;
+VIM_PRELOAD  = $(NEOVIM_PATH)/vim/shared.lua
 
 # Exports for $(BINDIR)/sources.lua
 export LUA_PATH
 export VIM_PRELOAD
 
-CLONE = @git clone --depth=1 $(1) $(2)
+CLONE  = @git clone --depth=1 $(1) $(2)
 
 .PHONY: sources all install
 all: install ## Download repos

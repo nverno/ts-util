@@ -10,7 +10,7 @@
 * Nvim functions that would be nice
 ** vim.treesitter.get_captures_at_[cursor|pos]()
 Get the highlight captures at point.
-** vim.treesitter.language.inspect(lang)
+** DONE vim.treesitter.language.inspect(lang)
 Provides info about lang, include node names
 
 #+begin_quote
