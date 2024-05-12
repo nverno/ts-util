@@ -115,6 +115,7 @@
 
 ;; Get neovim tree-sitter parser sources
 (defun ts-util--get-sources ()
+  "Get parser sources from nvim."
   (ts-util:call-process
       (call-process-shell-command
        (format
@@ -129,9 +130,25 @@
 (defvar ts-util--sources (ignore-errors (ts-util--get-sources)))
 
 (defun ts-util-sources ()
+  "List all available tree-sitter parser sources from nvim."
   (or ts-util--sources
       (setq ts-util--sources (ts-util--get-sources))
       (user-error "Failed to get neovim sources (is nvim installed?)")))
+
+(defun ts-util-installed-parsers ()
+  "List installed parsers as list of cons of parser name and its path.
+Checks in directory \"tree-sitter\" under `user-emacs-directory' and paths in
+`treesit-extra-load-path'."
+  (let* ((paths (seq-uniq
+                 (cons (expand-file-name "tree-sitter" user-emacs-directory)
+                       treesit-extra-load-path)))
+         (parsers (cl-loop for dir in paths
+                           when (file-exists-p dir)
+                           nconc (directory-files dir t "^[^.]"))))
+    (--map (cons (intern (and (string-match ".*-\\([^-]+\\)[.].*$" it)
+                              (match-string 1 it)))
+                 it)
+           parsers)))
 
 ;;;###autoload
 (defun ts-util-add-treesit-sources ()
@@ -160,7 +177,7 @@ Otherwise, prompt for ENTRY."
            (let ((srcs (ts-util-sources)))
              (and-let* ((grammar (completing-read "Grammar: " srcs nil t)))
                (car (assoc-default (intern grammar) srcs)))))))
-  (and entry (browse-url (elt entry 1))))
+  (and entry (browse-url (elt entry 2))))
 
 (defun ts-util-install-grammar ()
   "Install the tree-sitter grammar at point, using neovim recipe."
@@ -168,7 +185,7 @@ Otherwise, prompt for ENTRY."
   (when-let ((entry (tabulated-list-get-entry (point))))
     (let* ((lang (tabulated-list-get-id (point)))
            (lst (mapcar (lambda (s) (if (string-empty-p s) nil s))
-                        (append entry nil)))
+                        (cdr (append entry nil))))
            (treesit-language-source-alist (list (cons lang (cdr lst)))))
       (treesit-install-language-grammar lang))))
 
@@ -197,7 +214,7 @@ exists."
   "Clone grammar at point in `ts-util-grammar-directory'.
 With prefix, attempt to BUILD after cloning."
   (interactive
-   (list (and-let* ((entry (tabulated-list-get-entry (point)))) (elt entry 1))
+   (list (and-let* ((entry (tabulated-list-get-entry (point)))) (elt entry 2))
          current-prefix-arg))
   (unless url (user-error "No url"))
   (let* ((res (ts-util--clone-grammar url build))
@@ -229,11 +246,21 @@ With prefix, attempt to BUILD after cloning."
   "c" #'ts-util-clone-grammar)
 
 (define-derived-mode ts-util-sources-mode tabulated-list-mode "TsSrc"
-  "Mode to view neovim tree-sitter parsers."
+  "Mode to view tree-sitter parser sources."
   (setq tabulated-list-format
-        [("Parser" 10 t) ("Url" 50 t) ("Revision" 8 t) ("Location" 15 t)])
+        [("Inst" 5 t) ("Parser" 10 t) ("Url" 50) ("Revision" 8) ("Location" 15)])
   (setq tabulated-list-sort-key '("Parser" . nil))
-  (setq tabulated-list-entries (ts-util-sources))
+  (let ((installed (ts-util-installed-parsers)))
+    (setq tabulated-list-entries
+          (cl-loop for s in (ts-util-sources)
+                   for name = (car s)
+                   for entry =
+                   (apply #'vector
+                          (if (assq name installed)
+                              (propertize "✓" 'face '(:foreground "green"))
+                            "")
+                          (append (cadr s) nil))
+                   collect (list name entry))))
   (tabulated-list-init-header)
   (tabulated-list-print))
 
@@ -291,24 +318,24 @@ If SHOW is non-nil pop to results buffer."
 ;; -------------------------------------------------------------------
 ;;; Transient
 
-(declare-function ts-query-remove-highlights "ts-query")
-(declare-function ts-parser-list-nodes "ts-parser")
+;; (declare-function ts-query-remove-highlights "ts-query")
+;; (declare-function ts-parser-list-nodes "ts-parser")
 
-;;;###autoload(autoload 'ts-util-menu "ts-util" nil t)
-(transient-define-prefix ts-util-menu ()
-  "TS util"
-  [["Query"
-    ("q" "Highlight query" ts-query-highlight-query :transient t)
-    ("Q" "Remove highlights" ts-query-remove-highlights)
-    ("j" "Jump to queries" ts-util-jump-to-queries)]
-   ["Parsers"
-    ("l" "List Nodes" ts-parser-list-nodes)
-    ("L" "List sources" ts-util-list-sources)
-    ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
-   ["Errors"
-    ("e" "Toggle errors" ts-error-toggle :transient t)]
-   ["Tests"
-    ("x" "Extract corpus tests" ts-util-extract-corpus-tests)]])
+;; ;;;###autoload(autoload 'ts-util-menu "ts-util" nil t)
+;; (transient-define-prefix ts-util-menu ()
+;;   "TS util"
+;;   [["Query"
+;;     ("q" "Highlight query" ts-query-highlight-query :transient t)
+;;     ("Q" "Remove highlights" ts-query-remove-highlights)
+;;     ("j" "Jump to queries" ts-util-jump-to-queries)]
+;;    ["Parsers"
+;;     ("l" "List Nodes" ts-parser-list-nodes)
+;;     ("L" "List sources" ts-util-list-sources)
+;;     ("r" "Show ranges" ts-parser-toggle-ranges :transient t)]
+;;    ["Errors"
+;;     ("e" "Toggle errors" ts-error-toggle :transient t)]
+;;    ["Tests"
+;;     ("x" "Extract corpus tests" ts-util-extract-corpus-tests)]])
 
 (provide 'ts-util)
 ;; Local Variables:

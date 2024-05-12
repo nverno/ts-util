@@ -31,12 +31,6 @@
 (declare-function hs-hide-all "hideshow")
 (declare-function hs-toggle-hiding "hideshow")
 
-(eval-when-compile
-  (defsubst ts:parser-lib-name (lib)
-    (car (last (split-string (file-name-sans-extension lib) "-"))))
-
-  (defsubst ts:parser-lib-read ()
-    (expand-file-name (read-file-name "Parser: " ts-util-parser-directory))))
 
 (defconst ts-parser--overlay-name 'ts-parser)
 
@@ -98,21 +92,28 @@
    (substitute-command-keys
     "Press \\<ts-node-mode-map>\\[hs-toggle-hiding] to toggle section hiding")))
 
+
+(eval-when-compile
+  (defsubst ts:parser-lib-name (parser-file)
+    (car (last (split-string (file-name-sans-extension parser-file) "-")))))
+
 ;;;###autoload
-(defun ts-parser-list-nodes (parser &optional types)
+(defun ts-parser-list-nodes (parser-file &optional parser-name types)
   "Get node and field names for PARSER.
 With \\[universal-argument] prompt for TYPES to limit results."
   (interactive
-   (list (ts:parser-lib-read)
-         (and current-prefix-arg
-              (completing-read "Type: " '("all" "named" "anon" "field")))))
-  (let* ((name (ts:parser-lib-name parser))
-         (bufname (format "*%s-nodes*" name)))
+   (let* ((parsers (ts-util-installed-parsers))
+          (parser (completing-read "Parser: " parsers nil t)))
+     (list (and parser (assoc-default parser parsers #'string=)) parser
+           (and current-prefix-arg
+                (completing-read "Type: " '("all" "named" "anon" "field"))))))
+  (or parser-name (setq parser-name (ts:parser-lib-name parser-file)))
+  (let ((bufname (format "*%s-nodes*" parser-name)))
     (unless (get-buffer bufname)
       (call-process-shell-command
        (format "python %s -t %s %s %s"
                (expand-file-name "bin/nodes.py" ts-util--dir)
-               (or types "all") name parser)
+               (or types "all") parser-name parser-file)
        nil (get-buffer-create bufname) t))
     (with-current-buffer bufname
       (goto-char (point-min))
