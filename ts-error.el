@@ -91,7 +91,8 @@
   "Toggle tree sitter error overlays in buffer.
 With prefix, ADD additional language to those currently active."
   (interactive "P")
-  (if (and (not add) (memq #'ts-error--update-errors after-change-functions))
+  (if (and (null add)
+           (memq #'ts-error--update-errors after-change-functions))
       (progn
         (remove-overlays (point-min) (point-max) 'ts-error t)
         (setq ts-error--langs nil)

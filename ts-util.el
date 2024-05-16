@@ -241,6 +241,7 @@ With prefix, attempt to BUILD after cloning."
         (funcall go-fn src-dir)))))
 
 (defvar-keymap ts-util-sources-mode-map
+  :doc "Keymap in `ts-util-sources-mode'."
   "w" #'ts-util-browse-repo
   "i" #'ts-util-install-grammar
   "c" #'ts-util-clone-grammar)
