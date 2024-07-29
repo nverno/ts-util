@@ -16,7 +16,11 @@ sections.each do |section|
   s = section.split(/\n*---+\n+/).first
   next unless s
 
+  s.chomp!(' \t\n')
   res << s.strip
+
+  c = ENV['TS_STATEMENT_TERM']
+  res << c unless c.nil? || s.end_with?(c)
 end
 
 puts res.join("\n\n")
