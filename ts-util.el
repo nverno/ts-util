@@ -95,12 +95,14 @@
        (let ((,res ,cmd))
          (if (processp ,res)
              (cl-letf ((callback
-                        (lambda (p _m)
-                          (with-current-buffer (process-buffer p)
-                            (if (zerop (process-exit-status p))
-                                (unwind-protect (progn ,@on-success)
-                                  (kill-buffer))
-                              (pop-to-buffer (current-buffer)))))))
+                        (lambda (p m)
+                          (let ((stat (process-exit-status p)))
+                            (if (zerop stat)
+                                (with-current-buffer (process-buffer p)
+                                  (unwind-protect (progn ,@on-success)
+                                    (kill-buffer)))
+                              (pop-to-buffer (process-buffer p))
+                              (error "%s: %S" m (process-exit-status p)))))))
                (require 'shell)
                (setq mode-line-process '(":%s"))
                (let (shell-mode-hook)
@@ -111,21 +113,21 @@
            (if (zerop ,res)
                (unwind-protect (progn ,@on-success)
                  (kill-buffer))
-             (pop-to-buffer (current-buffer))))))))
+             (error "%S" ,res)))))))
 
-;; Get neovim tree-sitter parser sources
 (defun ts-util--get-sources ()
-  "Get parser sources from nvim."
-  (ts-util:call-process
-      (call-process-shell-command
-       (format
-        "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
-        ts-util-neovim-directory
-        ts-util-nvim-treesitter-directory
-        (expand-file-name "bin/sources.lua" ts-util--dir))
-       nil (current-buffer))
-    (goto-char (point-min))
-    (read (current-buffer))))
+  "Get neovim's tree-sitter parser sources."
+  (with-demoted-errors "Error getting neovim parser sources: %S"
+    (ts-util:call-process
+        (call-process-shell-command
+         (format
+          "LUA_PATH=\"%s/runtime/lua/?.lua;%s/lua/?.lua;${LUA_PATH:-;}\" %s"
+          ts-util-neovim-directory
+          ts-util-nvim-treesitter-directory
+          (expand-file-name "bin/sources.lua" ts-util--dir))
+         nil (current-buffer))
+      (goto-char (point-min))
+      (read (current-buffer)))))
 
 (defvar ts-util--sources (ignore-errors (ts-util--get-sources)))
 
