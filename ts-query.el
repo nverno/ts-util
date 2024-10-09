@@ -40,7 +40,7 @@
 ;;
 ;; If the query has a trailing capture that isn't enclosed in parens, the point
 ;; needs to be after the capture group to include it in the query.
-;; 
+;;
 ;; For example, the point should be at '|' to include the capture groups in the
 ;; following query.
 ;;
@@ -60,9 +60,10 @@
 (defvar-local ts-query--langs nil)
 
 (defsubst ts-query--read-active-lang (&optional prompt active-langs)
-  "Completing read with PROMPT for a lang with active highlighting."
+  "Read a highlighted lang with PROMPT from ACTIVE-LANGS."
   (or active-langs (setq active-langs ts-query--langs))
-  (and active-langs (completing-read (or prompt "Lang: ") active-langs nil t)))
+  (when active-langs
+    (completing-read (or prompt "Lang: ") active-langs nil t)))
 
 ;;;###autoload
 (defun ts-query-highlight-query (parser query &optional face)
@@ -78,7 +79,7 @@ face (eg. \\='@error) or \\='hightlight."
   (let ((captures (treesit-query-capture parser query))
         res)
     (pcase-dolist (`(,name . ,node) captures)
-      ;; skip captures prefixed by "_"
+      ;; Skip captures prefixed by "_"
       (unless (string-prefix-p "_" (symbol-name name))
         (push (ts-util--make-overlay
                 (treesit-node-start node) (treesit-node-end node)
@@ -136,11 +137,11 @@ Point should be at start of query."
 ;;; Internal datastructure
 (cl-defstruct (ts--query (:constructor ts-query--make))
   "Holds info about buffer's query."
-  src-buf                               ; source buffer to run queries
-  parser-list                           ; list of all parsers in source
-  parser                                ; parser to use for queries
-  lang                                  ; internal: holds ts-lang pointer
-  )
+  src-buf                               ; Source buffer to run queries
+  parser-list                           ; List of all parsers in source
+  parser                                ; Parser to use for queries
+  ;; Internal: holds ts-lang pointer
+  lang)
 
 (defvar-local ts-query--current nil "Local `ts--query'.")
 
@@ -230,16 +231,24 @@ ARGS should be a plist of arguments suitable for `ts-query--make'."
   "C-c C-k" #'ts-query-clear-queries
   "C-c C-z" #'ts-query-pop-to-source)
 
-(defun ts-query--read-current (&optional plist)
+(easy-menu-define ts-query-minor-mode-menu ts-query-minor-mode-map
+  "Menu for Ts-Query minor mode."
+  '("TsQuery"
+    ["Execute query" ts-query-execute-query]
+    ["Clear queries" ts-query-clear-queries]
+    ["Pop to source" ts-query-pop-to-source]))
+
+(defun ts-query--read-args (&optional plist)
+  "Read query setup args, optionally returning a PLIST."
   (let* ((src-buffer (get-buffer (read-buffer "Source buffer: " nil t)))
-         (parser-list (let ((parser
-                             (intern (completing-read
-                                      "Parser: " (ts-util-installed-parsers)))))
-                        (unless (memq parser
-                                      (mapcar #'treesit-parser-language
-                                              (treesit-parser-list src-buffer)))
-                          (treesit-parser-create parser src-buffer))
-                        (list parser)))
+         (parser-list
+          (let ((parser (intern
+                         (completing-read
+                           "Parser: " (ts-util-installed-parsers)))))
+            (unless (memq parser (mapcar #'treesit-parser-language
+                                         (treesit-parser-list src-buffer)))
+              (treesit-parser-create parser src-buffer))
+            (list parser)))
          (parser (car parser-list)))
     (if plist
         (list :src-buf src-buffer :parser parser :parser-list parser-list)
@@ -247,11 +256,13 @@ ARGS should be a plist of arguments suitable for `ts-query--make'."
 
 (define-minor-mode ts-query-minor-mode
   "Minor mode active in interactive query buffers."
+  :lighter " TsQuery"
   :abbrev-table nil
   (if (null ts-query-minor-mode)
-      (remove-hook 'completion-at-point-functions #'ts-query-completion-at-point t)
+      (remove-hook 'completion-at-point-functions
+                   #'ts-query-completion-at-point t)
     (unless ts-query--current
-      (apply #'ts-query-make-current (ts-query--read-current 'plist)))
+      (apply #'ts-query-make-current (ts-query--read-args 'plist)))
     (when (require 'ts-lang nil t)
       (add-hook 'completion-at-point-functions
                 #'ts-query-completion-at-point nil t))))
@@ -259,25 +270,27 @@ ARGS should be a plist of arguments suitable for `ts-query--make'."
 
 ;;;###autoload
 (defun ts-query (src-buffer &optional parser parser-list)
-  "Open interactive query buffer."
+  "Open interactive query buffer for SRC-BUFFER with PARSER.
+SRC-BUFFER, PARSER, and PARSER-LIST are args for `ts-query-make-current'."
   (interactive
-   (if current-prefix-arg
-       (ts-query--read-current)
+   (if current-prefix-arg (ts-query--read-args)
      (let ((parsers (mapcar #'treesit-parser-language
                             (treesit-parser-list (current-buffer)))))
        (list (current-buffer) (car parsers) parsers))))
   (let ((buf (get-buffer-create
-              (format "*ts-query[%s]*"
-                      (file-name-base (buffer-name src-buffer))))))
+              (format "*Ts Query on %s*"
+                      (file-name-nondirectory
+                       (buffer-name src-buffer))))))
     (with-current-buffer buf
-      (and (fboundp 'query-ts-mode)
-           (query-ts-mode))
+      (when (fboundp 'query-ts-mode)
+        (query-ts-mode))
       (ts-query-make-current
        :src-buf src-buffer
        :parser parser
        :parser-list parser-list)
       (ts-query-minor-mode)
-      (pop-to-buffer buf))))
+      (prog1 buf
+        (pop-to-buffer buf)))))
 
 
 (provide 'ts-query)

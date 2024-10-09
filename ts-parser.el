@@ -74,20 +74,21 @@
 ;;; List Parser Nodes
 
 (defvar-keymap ts-parser-nodes-mode-map
-  "<tab>" #'hs-toggle-hiding)
+  "TAB" #'hs-toggle-hiding)
 
-(define-derived-mode ts-parser-nodes-mode fundamental-mode "TsNodes"
+(define-derived-mode ts-parser-nodes-mode special-mode "TsNodes"
   "Mode for viewing parser nodes."
   (require 'hideshow)
   (setq-local comment-start "")
   (setq-local hs-special-modes-alist
-              `((ts-parser-nodes-mode ,(rx bol (or "Named" "Anon" "Fields") ":")
-                              "^$")))
-  (setq-local forward-sexp-function     ; for hideshow
+              `((ts-parser-nodes-mode
+                 ,(rx bol (or "Named" "Anon" "Fields") ":") "^$")))
+  ;; For hideshow
+  (setq-local forward-sexp-function
               (lambda (&optional arg) (re-search-forward "^$" nil t (or arg 1))))
   (hs-minor-mode)
   (hs-hide-all)
-  (view-mode)
+  ;; (view-mode)
   (message
    (substitute-command-keys
     "Press \\<ts-node-mode-map>\\[hs-toggle-hiding] to toggle section hiding")))
@@ -108,7 +109,7 @@ With \\[universal-argument] prompt for TYPES to limit results."
            (and current-prefix-arg
                 (completing-read "Type: " '("all" "named" "anon" "field"))))))
   (or parser-name (setq parser-name (ts:parser-lib-name parser-file)))
-  (let ((bufname (format "*%s-nodes*" parser-name)))
+  (let ((bufname (format "*Treesitter Nodes for %s*" parser-name)))
     (unless (get-buffer bufname)
       (call-process-shell-command
        (format "python %s -t %s %s %s"
