@@ -1,4 +1,4 @@
-;;; ts-query.el --- Tree-sitter queries -*- lexical-binding: t; -*-
+ ;;; ts-query.el --- Tree-sitter queries -*- lexical-binding: t; -*-
 
 ;; Author: Noah Peart <noah.v.peart@gmail.com>
 ;; URL: https://github.com/nverno/ts-util
@@ -278,7 +278,7 @@ SRC-BUFFER, PARSER, and PARSER-LIST are args for `ts-query-make-current'."
                             (treesit-parser-list (current-buffer)))))
        (list (current-buffer) (car parsers) parsers))))
   (let ((buf (get-buffer-create
-              (format "*Ts Query on %s*"
+              (format "*Query on %s*"
                       (file-name-nondirectory
                        (buffer-name src-buffer))))))
     (with-current-buffer buf

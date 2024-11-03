@@ -51,7 +51,7 @@ Otherwise, prompt for ENTRY."
 (defun ts-sources-install-grammar ()
   "Install the tree-sitter grammar at point, using neovim recipe."
   (interactive)
-  (when-let ((entry (tabulated-list-get-entry (point))))
+  (when-let* ((entry (tabulated-list-get-entry (point))))
     (let* ((lang (tabulated-list-get-id (point)))
            (lst (mapcar (lambda (s) (if (string-empty-p s) nil s))
                         (cdr (append entry nil))))
