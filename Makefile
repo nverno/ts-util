@@ -28,7 +28,7 @@ $(NEOVIM_DIR):
 $(NVIM_DIR):
 	$(call CLONE,$(NVIM_TS_REPO),$@)
 
-sources: ## Print neovim parsers and their source repos
+sources: | install ## Print neovim parsers and their source repos
 	$(BINDIR)/sources.lua
 
 
