@@ -147,10 +147,9 @@ Checks in directory \"tree-sitter\" under `user-emacs-directory' and paths in
          (parsers (cl-loop for dir in paths
                            when (file-exists-p dir)
                            nconc (directory-files dir t "^[^.]"))))
-    (--map (cons (intern (and (string-match ".*-\\([^-]+\\)[.].*$" it)
-                              (match-string 1 it)))
-                 it)
-           parsers)))
+    (delq nil (--map (when (string-match ".*-\\([^-]+\\)[.].*$" it)
+                       (cons (intern (match-string 1 it)) it))
+                     parsers))))
 
 ;;;###autoload
 (defun ts-util-add-treesit-sources ()
